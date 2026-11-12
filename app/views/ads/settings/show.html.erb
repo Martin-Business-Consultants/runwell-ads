@@ -1,0 +1,134 @@
+<% @page_title = "Ads" %>
+<%= render "settings/header", current: :ads %>
+<%# Settings › Plugins › Ads (Ads::SettingsController): the default fee and the run day, LuminAds, invoicing (off by default),
+    and QuickBooks; the keys (Ads::ConnectionsController, browser only). %>
+<div class="settings-page">
+  <section class="settings-section">
+    <header class="settings-section__head">
+      <h2>Default fee</h2>
+      <p class="settings-section__description">
+        The management fee each PPC service comes to, unless its own Ads tab says otherwise:
+        now <%= @setting.terms %>.
+      </p>
+    </header>
+    <%= form_with model: @setting, scope: :setting, url: ads_settings_path, method: :patch, class: "settings-form" do |form| %>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :default_rule, "Rule", class: "field__label" %>
+          <%= form.select :default_rule, Ads::Terms::RULES.map { |key, label| [ label, key ] } %>
+        </div>
+        <div class="field">
+          <%= form.label :default_minimum_cents, "Minimum a month, or the flat fee", class: "field__label" %>
+          <%= money_field form, :default_minimum_cents %>
+        </div>
+        <div class="field">
+          <%= form.label :default_percent, "Share of ad spend (%)", class: "field__label" %>
+          <%= form.number_field :default_percent, step: 0.01, min: 0, max: 100 %>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :run_on_day, "Last month is final on day", class: "field__label" %>
+          <%= form.number_field :run_on_day, min: 1, max: 28 %>
+          <span class="field__hint">Ad platforms settle a month’s spend for a few days after it ends; until this day it’s still read every night.</span>
+        </div>
+      </div>
+      <div><button type="submit" class="btn btn--primary">Save</button></div>
+    <% end %>
+  </section>
+
+  <section class="settings-section">
+    <header class="settings-section__head">
+      <h2>LuminAds</h2>
+      <p class="settings-section__description">
+        Where spend comes from, read every night. Give your LuminAds address (with its workspace, such as https://you.luminads.com) and an API token
+        made there; it only reads.
+        <% if @setting.luminads_ready? %>Connected to <%= @setting.luminads_url %>.<% end %>
+      </p>
+    </header>
+    <%= form_with model: @setting, scope: :luminads, url: ads_connection_path, method: :patch, class: "settings-form" do |form| %>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :luminads_url, "Address", class: "field__label" %>
+          <%= form.url_field :luminads_url, autocomplete: "off", placeholder: "https://you.luminads.com" %>
+        </div>
+        <div class="field">
+          <%= form.label :luminads_token, "API token", class: "field__label" %>
+          <%= secret_field form, :luminads_token, placeholder: @setting.luminads_token.present? ? "Saved; type to replace" : nil %>
+        </div>
+      </div>
+      <div><button type="submit" class="btn btn--secondary">Save and test</button></div>
+    <% end %>
+  </section>
+
+  <section class="settings-section">
+    <header class="settings-section__head">
+      <h2>Invoicing</h2>
+      <p class="settings-section__description">
+        Off: Ads only keeps what each service costs. On: each month, once final, is drafted as an invoice in QuickBooks,
+        unsent, with a task for someone to check it and send it from QuickBooks. Nothing is ever sent to a client from here.
+      </p>
+    </header>
+    <%= form_with model: @setting, scope: :setting, url: ads_settings_path, method: :patch, class: "settings-form", namespace: "ads_invoicing" do |form| %>
+      <%= switch_field form, :invoicing, label: "Draft invoices in QuickBooks", hint: "Needs QuickBooks connected below, a product or service for the line, and a customer on each service." %>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :reviewer_id, "Drafts reviewed by", class: "field__label" %>
+          <%= form.select :reviewer_id, User.people.active.ordered.map { [ it.name, it.id ] }, { include_blank: "Nobody: each waits in Intake" } %>
+          <span class="field__hint">Who gets each month’s task to check the draft and send it. A <%= term(:work).downcase %> may name someone else.</span>
+        </div>
+        <div class="field">
+          <%= form.label :quickbooks_item_id, "QuickBooks product or service", class: "field__label" %>
+          <% if @items.items.any? %>
+            <%= form.select :quickbooks_item_id, @items.items.map { [ it["name"], it["id"] ] }, { include_blank: "Choose one" } %>
+          <% else %>
+            <p class="muted small"><%= @items.error || "Connect QuickBooks below to choose one." %></p>
+          <% end %>
+          <span class="field__hint">What the invoice line is for, as QuickBooks books it.</span>
+        </div>
+      </div>
+      <div><button type="submit" class="btn btn--primary">Save</button></div>
+    <% end %>
+  </section>
+
+  <section class="settings-section">
+    <header class="settings-section__head">
+      <h2>QuickBooks</h2>
+      <p class="settings-section__description">
+        Only for invoicing. Make an app at developer.intuit.com with the Accounting scope, add
+        <code><%= ads_authorization_url %></code> as its redirect URI, then paste its keys here and sign in.
+        <% if @connection.connected? %>
+          Connected to <%= @connection.company_name || "QuickBooks" %><%= " (sandbox)" if @connection.sandbox? %>.
+        <% end %>
+      </p>
+    </header>
+    <% if @connection.last_error.present? %>
+      <%= callout(@connection.last_error, tone: :danger) %>
+    <% end %>
+    <%= form_with model: @connection, scope: :quickbooks, url: ads_connection_path, method: :patch, class: "settings-form" do |form| %>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :client_id, "Client ID", class: "field__label" %>
+          <%= form.text_field :client_id, autocomplete: "off" %>
+        </div>
+        <div class="field">
+          <%= form.label :client_secret, "Client secret", class: "field__label" %>
+          <%= secret_field form, :client_secret, placeholder: @connection.client_secret.present? ? "Saved; type to replace" : nil %>
+        </div>
+        <div class="field">
+          <%= form.label :environment, "Company", class: "field__label" %>
+          <%= form.select :environment, [ [ "Your real books", "production" ], [ "A sandbox company", "sandbox" ] ] %>
+        </div>
+      </div>
+      <div><button type="submit" class="btn btn--secondary">Save</button></div>
+    <% end %>
+    <div class="button-row">
+      <% if @connection.configured? %>
+        <%= button_to (@connection.connected? ? "Sign in to QuickBooks again" : "Sign in to QuickBooks"), ads_authorization_path, class: "btn btn--primary", data: { turbo: false } %>
+      <% end %>
+      <% if @connection.connected? %>
+        <%= button_to "Disconnect", ads_connection_path, method: :delete, class: "btn btn--ghost" %>
+      <% end %>
+    </div>
+  </section>
+</div>

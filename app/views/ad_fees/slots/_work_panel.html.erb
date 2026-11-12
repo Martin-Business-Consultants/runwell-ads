@@ -1,8 +1,0 @@
-<%# locals: (work:) %>
-<%# The Ad fees tab on each piece of work (the :work_panel slot): its plan and its months. Money, so
-    only for people who manage ad fees. %>
-<% if can?(:manage_ad_fees) %>
-  <%= render "ad_fees/plans/plan", work: work %>
-<% else %>
-  <p class="muted">Ad fees are for people who may set and invoice them.</p>
-<% end %>

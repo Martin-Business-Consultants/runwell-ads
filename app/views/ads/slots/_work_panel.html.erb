@@ -1,0 +1,8 @@
+<%# locals: (work:) %>
+<%# The Ads tab on each piece of work (the :work_panel slot): whether it's an ad service (PPC), what
+    it costs this month so far, its settings and its months. Only for people who manage ads. %>
+<% if can?(:manage_ads) %>
+  <%= render "ads/plans/plan", work: work %>
+<% else %>
+  <p class="muted">What ad services cost is for people who manage ads.</p>
+<% end %>

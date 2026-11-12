@@ -10,11 +10,11 @@ Read first, in Runwell's repository:
 
 ## Rules
 
-- Own your tables, prefixed with the key (`ad_fees_*`), pointing at core records by id. Never
+- Own your tables, prefixed with the key (`ads_*`), pointing at core records by id. Never
   add columns to core tables or write core rows except through core model verbs.
 - Register everything in `config.to_prepare`, keyed by the plugin's key. Controllers inherit
-  `AdFees::ApplicationController` (404 while switched off); subscribers check
-  `Runwell::Plugins.enabled?(:ad_fees)`.
+  `Ads::ApplicationController` (404 while switched off); subscribers check
+  `Runwell::Plugins.enabled?(:ads)`.
 - Every controller action declares an authorization rule (`allow_staff`, `require_permission`)
   and an `agent_tool` or `agent_exempt`. Reads get a `.json.jbuilder` view with `agent_ref` and a
   `summary`. Write notices an AI can act on.
@@ -25,28 +25,31 @@ Read first, in Runwell's repository:
   `--radius-scale` / `--radius-control`.
 - Migrations are safe on a live install: add in one release, remove only in a later one.
 - Use only gems Runwell bundles: plugins load outside Bundler.
-- JavaScript is the plugin's own, in `app/javascript/ad_fees/`: Stimulus controllers in
-  `controllers/` (the core registers them as `ad-fees--name`; it has none yet,
-  modules imported as `"ad_fees/…"`. Import only `@hotwired/stimulus`,
+- JavaScript is the plugin's own, in `app/javascript/ads/`: Stimulus controllers in
+  `controllers/` (the core registers them as `ads--name`; it has none yet,
+  modules imported as `"ads/…"`. Import only `@hotwired/stimulus`,
   `@hotwired/turbo-rails`, `@rails/request.js` and your own files; use only the core controllers
   the contract lists; never patch the core's. No inline scripts, no CDNs (vendor a library into
-  `app/javascript/ad_fees/vendor/`). Everything still works for agents, which run no JavaScript.
+  `app/javascript/ads/vendor/`). Everything still works for agents, which run no JavaScript.
 - Keep it in the plugin: ask the core only for a real extension point, documented in the contract.
 - Write for anyone running something (a business, a team, a household): never one industry's jargon.
 
 ## Layout
 
-- `lib/ad_fees/engine.rb`: routes, model hooks, event subscriber, registrations
-- `app/`: models, controllers, views, stylesheets and JavaScript under `ad_fees/`
+- `lib/ads/engine.rb`: routes, model hooks, event subscriber, registrations
+- `app/`: models, controllers, views, stylesheets and JavaScript under `ads/`
 - `db/migrate/`: the plugin's tables
 
 ## This plugin
 
-- Money is integer cents everywhere; a share of spend is a decimal percent (20 for 20%).
-- `AdFees::Terms` is the fee rule (greater_of, flat, percent). `AdFees::Statement` is the state
-  machine (calculated, invoiced, skipped): verbs refuse what the state doesn't allow
-  (`Statement::Refused`), predicates (`invoiceable?`, `recalculable?`…) are what views and tools ask.
-- LuminAds and QuickBooks are called only from jobs (`MonthEndJob`, `CalculateJob`, `InvoiceJob`)
-  and, cached for ten minutes, for the form's pickers (`AdFees::Directory`).
-- The only write to QuickBooks is `QuickbooksApi#create_invoice`, unsent. Keep it that way unless
-  automatic sending is asked for: that reaches the client and needs `confirm:` on its tool.
+- A plan is a piece of work tagged as an ad service (`Ads::Plan::KINDS`: ppc). Its cost is kept
+  current: `Ads::Statement` per month, running (refreshed nightly by `RefreshJob` and on request by
+  `RefreshPlanJob`), final on the run day (`Setting#final?`), then invoiced or skipped only while
+  invoicing is on. Verbs refuse what the state doesn't allow (`Statement::Refused`); views and tools
+  ask the predicates (`refreshable?`, `invoiceable?`…).
+- `Ads::Terms` is the fee rule (greater_of, flat, percent). Money is integer cents; a share of spend is
+  a decimal percent (20 for 20%).
+- LuminAds and QuickBooks are called only from jobs and, cached for ten minutes, for the form's
+  pickers (`Ads::Directory`).
+- Invoicing is off by default. The only write to QuickBooks is `QuickbooksApi#create_invoice`, unsent.
+  Keep it that way unless sending is asked for: that reaches the client and needs `confirm:` on its tool.

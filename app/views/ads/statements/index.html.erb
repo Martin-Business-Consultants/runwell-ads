@@ -1,0 +1,55 @@
+<% @page_title = "Ads" %>
+<%# Every ad service's figure for a month, this month by default (Ads::StatementsController). %>
+<% content_for :index_filters do %>
+  <%= render "layouts/shared/quick_filter", title: "Month", param: :period,
+        options: @periods.map { [ it.strftime("%B %Y"), it.strftime("%Y-%m") ] } + [ [ "Every month", "all" ] ],
+        current: @period ? @period.strftime("%Y-%m") : "all" %>
+  <%= render "layouts/shared/quick_filter", title: "State", param: :state,
+        options: [ [ "Any state", "" ] ] + AdsHelper::ADS_STATE_LABELS.map { |state, label| [ label, state ] },
+        current: @state.to_s %>
+<% end %>
+<%= render "layouts/shared/index_toolbar" %>
+
+<div class="stack ads-page">
+  <% if @setting.luminads_blocker %>
+    <%= callout(tone: :attention) do %>
+      <p><%= @setting.luminads_blocker %>.<% if can?(:manage_settings) %> <%= link_to "Open Ads settings", ads_settings_path %>.<% end %></p>
+    <% end %>
+  <% end %>
+  <% if @troubled.any? %>
+    <%= callout(tone: :danger, title: "Couldn’t be read") do %>
+      <ul class="ads-troubles">
+        <% @troubled.each do |plan| %>
+          <%# herb:key plan.id %>
+          <li><%= link_to plan.work.title, main_app.work_path(plan.work, tab: "plugin-ads") %>: <%= plan.last_error %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  <% end %>
+
+  <div class="ads-run">
+    <p class="muted small">
+      Each PPC service’s spend and fee is read from LuminAds every night; a month is final on day <%= @setting.run_on_day %> of the next.
+      Default fee: <%= @setting.terms %>. Invoicing is <%= @setting.invoicing ? "on: each final month is drafted in QuickBooks, unsent" : "off" %>.
+    </p>
+    <%= button_to ads_refresh_path, params: { period: (@period || Date.current.beginning_of_month).iso8601 }, class: "btn btn--secondary btn--sm" do %>
+      <%= icon_tag "refresh" %> <span>Refresh <%= (@period || Date.current).strftime("%B") %> now</span>
+    <% end %>
+  </div>
+
+  <% if @statements.any? %>
+    <%= render "ads/statements/table", statements: @statements.to_a, show_work: true, unit: @period ? "service" : "monthly figure" %>
+  <% end %>
+  <% if @unread.any? %>
+    <p class="muted small">
+      Not read yet for <%= @period.strftime("%B") %>:
+      <% @unread.each_with_index do |plan, index| %>
+        <%# herb:key plan.id %>
+        <%= ", " if index.positive? %><%= link_to plan.work.title, main_app.work_path(plan.work, tab: "plugin-ads") %>
+      <% end %>.
+    </p>
+  <% end %>
+  <% if @statements.none? && @unread.none? %>
+    <%= render "layouts/shared/empty", text: "No ad services yet. Tag a #{term(:work).downcase} as PPC on its Ads tab and link its LuminAds accounts; what it costs shows here." %>
+  <% end %>
+</div>

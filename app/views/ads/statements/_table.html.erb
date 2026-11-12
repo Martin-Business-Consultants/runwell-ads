@@ -1,0 +1,29 @@
+<%# locals: (statements:, show_work:, unit: nil) %>
+<%# Ad services' months as a table: by service on the Ads page, by month on a work's tab. A running
+    month adds where it's heading. The Fee header carries the total of the rows shown, as a tooltip,
+    for owners (ads_amount_header). %>
+<% projecting = statements.any?(&:partial?) %>
+<div class="table-wrap">
+  <table class="table ads-table">
+    <thead>
+      <tr>
+        <% if show_work %>
+          <th class="table__grow"><%= term(:work) %></th>
+        <% else %>
+          <th>Month</th>
+        <% end %>
+        <th class="ads-num">Ad spend</th>
+        <th class="ads-num"><%= ads_amount_header("Fee", statements, unit: unit || (show_work ? "service" : "month")) %></th>
+        <% if projecting %>
+          <th class="ads-num"><span title="The month at the pace so far">Heading for</span></th>
+        <% end %>
+        <th>Why</th>
+        <th>State</th>
+        <th><span class="visually-hidden">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <%= render partial: "ads/statements/row", collection: statements, as: :statement, locals: { show_work: show_work, projecting: projecting } %>
+    </tbody>
+  </table>
+</div>

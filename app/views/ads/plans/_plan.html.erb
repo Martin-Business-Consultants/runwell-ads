@@ -1,0 +1,125 @@
+<%# locals: (work:) %>
+<%# A piece of work's Ads tab (Ads::PlansController). Untagged: one button to tag it PPC. Tagged:
+    this month so far (spend, fee, where it's heading), its settings (LuminAds accounts and fee
+    terms; the QuickBooks customer and reviewer while invoicing is on), then its months. The pickers
+    ask LuminAds and QuickBooks (kept ten minutes, Ads::Directory). %>
+<% plan = work.ads_plan %>
+<% setting = Ads::Setting.current %>
+<% defaults = setting.terms %>
+
+<div class="stack ads-plan">
+  <h2 class="visually-hidden">Ads</h2>
+  <% if plan.nil? %>
+    <%= card "Not an ad service", hint: "Tag #{work.title} as PPC to keep what it costs current: its ad spend from LuminAds and the management fee it comes to (#{defaults} by default)." do %>
+      <%= button_to ads_plan_path(work_ref: work.ref), method: :patch, params: { plan: { kind: "ppc" } }, class: "btn btn--primary" do %>
+        <%= icon_tag "tag" %> <span>Tag as PPC</span>
+      <% end %>
+    <% end %>
+  <% else %>
+    <% current = plan.current_statement %>
+    <% accounts = setting.luminads_blocker ? Ads::Directory::Listing.new(items: [], error: setting.luminads_blocker) : Ads::Directory.luminads_accounts %>
+    <% account_options = (accounts.items.map { [ it["name"], it["id"] ] } + Array(plan.luminads_accounts).map { [ it["name"], it["id"] ] }).uniq(&:last) %>
+    <% statements = plan.statements.ordered.includes(:task, :plan, :work, :client).to_a %>
+
+    <%= card "#{Date.current.strftime("%B")} so far", hint: plan.account_names.any? ? "Spend on #{plan.account_names.to_sentence}." : nil do %>
+      <% if plan.blocker(setting) %>
+        <%= callout("Still needed: #{plan.blocker(setting)}.", tone: :attention) %>
+      <% end %>
+      <% if plan.last_error.present? %>
+        <%= callout(plan.last_error, tone: :danger, title: "Couldn’t be read") %>
+      <% end %>
+      <% if current %>
+        <dl class="ads-figures">
+          <div>
+            <dt>Ad spend</dt>
+            <dd><%= money(current.spend_cents) %></dd>
+            <dd class="muted small">through <%= current.through_on.strftime("%b %-d") %></dd>
+          </div>
+          <div>
+            <dt>Fee</dt>
+            <dd><strong><%= money(current.fee_cents) %></strong></dd>
+            <dd class="muted small"><%= current.explanation %></dd>
+          </div>
+          <% if current.partial? %>
+            <div>
+              <dt>Heading for</dt>
+              <dd><%= money(current.projected_fee_cents) %></dd>
+              <dd class="muted small">on <%= money(current.projected_spend_cents) %> of spend at this pace</dd>
+            </div>
+          <% end %>
+        </dl>
+        <p class="muted small">Read from LuminAds <%= time_ago_in_words(current.refreshed_at) %> ago; again every night.</p>
+      <% elsif !plan.active %>
+        <p class="muted">Paused: its cost isn’t read.</p>
+      <% elsif plan.blocker(setting).nil? %>
+        <p class="muted">Not read yet. It’s read every night, or now:</p>
+      <% end %>
+      <% if plan.active && plan.blocker(setting).nil? && !setting.luminads_blocker %>
+        <%= button_to ads_refresh_path, params: { work_id: work.id }, class: "btn btn--secondary btn--sm" do %>
+          <%= icon_tag "refresh" %> <span>Refresh now</span>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <%= card "Settings", hint: "Its fee is #{plan.terms(setting)}#{" (its own terms)" if plan.own_terms?}." do %>
+      <%= form_with model: plan, scope: :plan, url: ads_plan_path(work_ref: work.ref), method: :patch, namespace: dom_id(work, :ads), class: "ads-form" do |form| %>
+        <div class="field-row">
+          <div class="field">
+            <%= form.label :luminads_account_ids, "LuminAds accounts", class: "field__label" %>
+            <%= form.select :luminads_account_ids, account_options, { selected: plan.account_ids, include_hidden: true }, multiple: true %>
+            <span class="field__hint"><%= accounts.error || "Their spend, added together, is this service’s." %></span>
+          </div>
+          <div class="field">
+            <%= form.label :starts_on, "First month counted", class: "field__label" %>
+            <%= date_input form, :starts_on %>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <%= form.label :rule, "Fee", class: "field__label" %>
+            <%= form.select :rule, Ads::Terms::RULES.map { |key, label| [ label, key ] }, { include_blank: "The default: #{Ads::Terms::RULES[defaults.rule].downcase}", selected: plan.rule } %>
+          </div>
+          <div class="field">
+            <%= form.label :minimum_cents, "Minimum, or the flat fee", class: "field__label" %>
+            <%= money_field form, :minimum_cents, placeholder: "#{money(defaults.minimum_cents).delete_prefix("$")} (the default)" %>
+          </div>
+          <div class="field">
+            <%= form.label :percent, "Share of spend (%)", class: "field__label" %>
+            <%= form.number_field :percent, step: 0.01, min: 0, max: 100, placeholder: "#{ads_percent(defaults.percent)} (the default)" %>
+          </div>
+        </div>
+        <% if setting.invoicing %>
+          <% customers = Ads::QuickbooksConnection.current&.connected? ? Ads::Directory.quickbooks_customers : Ads::Directory::Listing.new(items: [], error: "QuickBooks isn’t connected yet (Settings › Plugins › Ads)") %>
+          <% customer_options = customers.items.map { [ it["name"], it["id"] ] } %>
+          <% if plan.quickbooks_customer_id.present? && customer_options.none? { it.last == plan.quickbooks_customer_id } %>
+            <% customer_options << [ plan.quickbooks_customer_name.presence || "Customer #{plan.quickbooks_customer_id}", plan.quickbooks_customer_id ] %>
+          <% end %>
+          <div class="field-row">
+            <div class="field">
+              <%= form.label :quickbooks_customer_id, "QuickBooks customer", class: "field__label" %>
+              <%= form.select :quickbooks_customer_id, customer_options, { include_blank: "Choose who’s billed", selected: plan.quickbooks_customer_id } %>
+              <span class="field__hint"><%= customers.error || "Who each month’s draft invoice is made out to." %></span>
+            </div>
+            <div class="field">
+              <%= form.label :reviewer_id, "Drafts reviewed by", class: "field__label" %>
+              <%= form.select :reviewer_id, User.people.active.ordered.map { [ it.name, it.id ] }, { include_blank: setting.reviewer ? "The default: #{setting.reviewer.name}" : "Nobody: it waits in Intake", selected: plan.reviewer_id } %>
+            </div>
+          </div>
+        <% end %>
+        <%= switch_field form, :active, label: "Counting", hint: "Off pauses it: its cost stops being read, and its months are kept." %>
+        <div class="button-row">
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      <% end %>
+      <div class="button-row ads-plan__more">
+        <%= render "layouts/shared/delete_dialog", name: "the PPC tag", path: ads_plan_path(work_ref: work.ref), message: "#{work.title} stops being an ad service, and its months here go too." %>
+      </div>
+    <% end %>
+
+    <% if statements.any? %>
+      <%= card "Months", hint: "A month is final on day #{setting.run_on_day} of the next, once ad platforms have settled its spend." do %>
+        <%= render "ads/statements/table", statements: statements, show_work: false %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
