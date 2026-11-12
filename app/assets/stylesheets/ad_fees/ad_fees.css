@@ -1,0 +1,21 @@
+/* Ad fees: the plan form, the months table and the Ad fees page. Drawn on Runwell's design tokens
+   (docs/theming.md). */
+.ad-fees-plan { gap: var(--s-4); }
+.ad-fees-form .field-row { flex-wrap: wrap; }
+.ad-fees-form .field { flex: 1 1 14rem; }
+.ad-fees-plan__more { justify-content: space-between; padding-top: var(--s-3); }
+
+.ad-fees-table td { vertical-align: middle; }
+.ad-fees-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ad-fees-actions { flex-wrap: nowrap; justify-content: flex-end; gap: var(--s-1); }
+.ad-fees-error { display: block; color: var(--danger); }
+
+/* The Fee header's total, for owners: a dotted underline says there's more on hover. */
+.ad-fees-total { text-decoration: underline dotted var(--text-faint); text-underline-offset: 3px; cursor: help; }
+.ad-fees-total:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-control); }
+
+.ad-fees-page { gap: var(--s-4); }
+.ad-fees-run { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.ad-fees-run p { margin: 0; max-width: 70ch; }
+.ad-fees-run__form { flex-direction: row; align-items: center; gap: var(--s-2); }
+.ad-fees-troubles { margin: 0; padding-left: var(--s-4); }

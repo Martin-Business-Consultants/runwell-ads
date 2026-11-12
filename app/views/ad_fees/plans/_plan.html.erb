@@ -1,0 +1,87 @@
+<%# locals: (work:) %>
+<%# A piece of work's ad fee (AdFees::PlansController): its terms, where its spend comes from and who
+    is billed, then each month's statement. The account and customer pickers ask LuminAds and
+    QuickBooks (kept ten minutes, AdFees::Directory). %>
+<% plan = work.ad_fees_plan || AdFees::Plan.new(work: work, starts_on: Date.current.beginning_of_month) %>
+<% setting = AdFees::Setting.current %>
+<% defaults = setting.terms %>
+<% accounts = setting.luminads_blocker ? AdFees::Directory::Listing.new(items: [], error: setting.luminads_blocker) : AdFees::Directory.luminads_accounts %>
+<% account_options = (accounts.items.map { [ it["name"], it["id"] ] } + Array(plan.luminads_accounts).map { [ it["name"], it["id"] ] }).uniq(&:last) %>
+<% customers = AdFees::QuickbooksConnection.current&.connected? ? AdFees::Directory.quickbooks_customers : AdFees::Directory::Listing.new(items: [], error: "QuickBooks isn’t connected yet (Settings › Plugins › Ad fees)") %>
+<% customer_options = customers.items.map { [ it["name"], it["id"] ] } %>
+<% if plan.quickbooks_customer_id.present? && customer_options.none? { it.last == plan.quickbooks_customer_id } %>
+  <% customer_options << [ plan.quickbooks_customer_name.presence || "Customer #{plan.quickbooks_customer_id}", plan.quickbooks_customer_id ] %>
+<% end %>
+<% statements = plan.persisted? ? plan.statements.ordered.includes(:task, :plan, :work, :client).to_a : [] %>
+
+<div class="stack ad-fees-plan">
+  <h2 class="visually-hidden">Ad fees</h2>
+  <%= card plan.persisted? ? "Terms" : "Set up an ad fee", hint: plan.persisted? ? plan.terms(setting).to_s.upcase_first + "." : "Bill #{work.title} a monthly fee on its ad spend: #{defaults} by default." do %>
+    <% if plan.persisted? && plan.blocker %>
+      <%= callout("Still needed: #{plan.blocker}.", tone: :attention) %>
+    <% end %>
+    <% if plan.last_error.present? %>
+      <%= callout(plan.last_error, tone: :danger, title: "Last month couldn’t be worked out") %>
+    <% end %>
+    <%= form_with model: plan, scope: :plan, url: ad_fees_plan_path(work_ref: work.ref), method: :patch, namespace: dom_id(work, :ad_fees), class: "ad-fees-form" do |form| %>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :luminads_account_ids, "LuminAds accounts", class: "field__label" %>
+          <%= form.select :luminads_account_ids, account_options, { selected: plan.account_ids, include_hidden: true }, multiple: true %>
+          <span class="field__hint"><%= accounts.error || "Their spend, added together, is what the share is of." %></span>
+        </div>
+        <div class="field">
+          <%= form.label :quickbooks_customer_id, "QuickBooks customer", class: "field__label" %>
+          <%= form.select :quickbooks_customer_id, customer_options, { include_blank: "Choose who’s billed", selected: plan.quickbooks_customer_id } %>
+          <span class="field__hint"><%= customers.error || "Who the draft invoice is made out to." %></span>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :rule, "Terms", class: "field__label" %>
+          <%= form.select :rule, AdFees::Terms::RULES.map { |key, label| [ label, key ] }, { include_blank: "The default: #{AdFees::Terms::RULES[defaults.rule].downcase}", selected: plan.rule } %>
+        </div>
+        <div class="field">
+          <%= form.label :minimum_cents, "Minimum, or the flat fee", class: "field__label" %>
+          <%= money_field form, :minimum_cents, placeholder: "#{money(defaults.minimum_cents).delete_prefix("$")} (the default)" %>
+        </div>
+        <div class="field">
+          <%= form.label :percent, "Share of spend (%)", class: "field__label" %>
+          <%= form.number_field :percent, step: 0.01, min: 0, max: 100, placeholder: "#{ad_fees_percent(defaults.percent)} (the default)" %>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <%= form.label :starts_on, "First month billed", class: "field__label" %>
+          <%= date_input form, :starts_on %>
+        </div>
+        <div class="field">
+          <%= form.label :reviewer_id, "Reviewed by", class: "field__label" %>
+          <%= form.select :reviewer_id, User.people.active.ordered.map { [ it.name, it.id ] }, { include_blank: setting.reviewer ? "The default: #{setting.reviewer.name}" : "Nobody: it waits in Intake", selected: plan.reviewer_id } %>
+        </div>
+      </div>
+      <%= switch_field form, :active, label: "Bill it each month", hint: "Off stops the monthly fee and keeps the months already worked out." %>
+      <div class="button-row">
+        <button type="submit" class="btn btn--primary"><%= plan.persisted? ? "Save" : "Set up the ad fee" %></button>
+      </div>
+    <% end %>
+    <% if plan.persisted? %>
+      <div class="button-row ad-fees-plan__more">
+        <%= button_to ad_fees_run_path, params: { work_id: work.id }, class: "btn btn--secondary btn--sm" do %>
+          <%= icon_tag "refresh" %> <span>Work out last month now</span>
+        <% end %>
+        <%= render "layouts/shared/delete_dialog", name: "this ad fee", path: ad_fees_plan_path(work_ref: work.ref), message: "Its months here go too. Invoices already drafted stay in QuickBooks." %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if plan.persisted? %>
+    <%= card "Months", hint: "Worked out on day #{setting.run_on_day} for the month before. A draft stays unsent in QuickBooks until someone sends it there." do %>
+      <% if statements.any? %>
+        <%= render "ad_fees/statements/table", statements: statements, show_work: false %>
+      <% else %>
+        <%= render "layouts/shared/empty", text: "Nothing worked out yet. #{plan.starts_on.strftime("%B %Y")} is worked out on #{plan.starts_on.next_month.change(day: setting.run_on_day).strftime("%B %-d")}." %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
