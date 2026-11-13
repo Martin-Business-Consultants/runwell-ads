@@ -1,12 +1,14 @@
 # The Ads plugin's view helpers.
 module AdsHelper
-  ADS_TONES = { "running" => :accent, "final" => :neutral, "invoiced" => :ok, "skipped" => :neutral }.freeze
+  # Each state's badge (ui :badge's variants): a running month in the info tone, a settled one
+  # outlined, a drafted one green, a skipped one quiet; drafting in the warning tone.
+  ADS_VARIANTS = { "running" => :info, "final" => :outline, "invoiced" => :success, "skipped" => :secondary }.freeze
   ADS_STATE_LABELS = { "running" => "So far", "final" => "Final", "invoiced" => "Drafted", "skipped" => "Skipped" }.freeze
 
   def ads_state_tag(statement)
     label = statement.invoicing? ? "Drafting…" : ADS_STATE_LABELS[statement.state]
     tip = statement.running? ? "Spend through #{statement.through_on.strftime("%b %-d")}, read #{time_ago_in_words(statement.refreshed_at)} ago" : nil
-    badge(statement.state, label, tone: statement.invoicing? ? :busy : ADS_TONES[statement.state], title: tip)
+    ui :badge, content: label, variant: statement.invoicing? ? :warning : ADS_VARIANTS[statement.state], title: tip
   end
 
   def ads_percent(value) = Ads::Terms.percent_label(value)

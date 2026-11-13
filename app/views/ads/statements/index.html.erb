@@ -10,14 +10,14 @@
 <% end %>
 <%= render "layouts/shared/index_toolbar" %>
 
-<div class="stack ads-page">
+<div class="ads-page">
   <% if @setting.luminads_blocker %>
-    <%= callout(tone: :attention) do %>
-      <p><%= @setting.luminads_blocker %>.<% if can?(:manage_settings) %> <%= link_to "Open Ads settings", ads_settings_path %>.<% end %></p>
+    <%= ui :alert, variant: :warning do %>
+      <%= @setting.luminads_blocker %>.<% if can?(:manage_settings) %> <%= link_to "Open Ads settings", ads_settings_path %>.<% end %>
     <% end %>
   <% end %>
   <% if @troubled.any? %>
-    <%= callout(tone: :danger, title: "Couldn’t be read") do %>
+    <%= ui :alert, variant: :destructive, title: "Couldn’t be read" do %>
       <ul class="ads-troubles">
         <% @troubled.each do |plan| %>
           <%# herb:key plan.id %>
@@ -28,11 +28,11 @@
   <% end %>
 
   <div class="ads-run">
-    <p class="muted small">
+    <p class="ads-quiet">
       Each PPC service’s spend and fee is read from LuminAds every night; a month is final on day <%= @setting.run_on_day %> of the next.
       Default fee: <%= @setting.terms %>. Invoicing is <%= @setting.invoicing ? "on: each final month is drafted in QuickBooks, unsent" : "off" %>.
     </p>
-    <%= button_to ads_refresh_path, params: { period: (@period || Date.current.beginning_of_month).iso8601 }, class: "btn btn--secondary btn--sm" do %>
+    <%= button_to ads_refresh_path, params: { period: (@period || Date.current.beginning_of_month).iso8601 }, class: "ui-button", data: { variant: "outline", size: "sm" } do %>
       <%= icon_tag "refresh" %> <span>Refresh <%= (@period || Date.current).strftime("%B") %> now</span>
     <% end %>
   </div>
@@ -41,7 +41,7 @@
     <%= render "ads/statements/table", statements: @statements.to_a, show_work: true, unit: @period ? "service" : "monthly figure" %>
   <% end %>
   <% if @unread.any? %>
-    <p class="muted small">
+    <p class="ads-quiet">
       Not read yet for <%= @period.strftime("%B") %>:
       <% @unread.each_with_index do |plan, index| %>
         <%# herb:key plan.id %>
@@ -50,6 +50,6 @@
     </p>
   <% end %>
   <% if @statements.none? && @unread.none? %>
-    <%= render "layouts/shared/empty", text: "No ad services yet. Tag a #{term(:work).downcase} as PPC on its Ads tab and link its LuminAds accounts; what it costs shows here." %>
+    <%= ui :empty, description: "No ad services yet. Tag a #{term(:work).downcase} as PPC on its Ads tab and link its LuminAds accounts; what it costs shows here." %>
   <% end %>
 </div>

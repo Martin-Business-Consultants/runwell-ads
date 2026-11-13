@@ -46,7 +46,7 @@ module Ads
 
     config.to_prepare do
       Runwell::Plugins.register :ads, name: "Ads", version: Ads::VERSION, author: "Martin Business Consultants",
-        enabled_by_default: false, requires: ">= 5.9.0", homepage: "https://github.com/Martin-Business-Consultants/runwell-ads",
+        enabled_by_default: false, requires: ">= 6.0.0", homepage: "https://github.com/Martin-Business-Consultants/runwell-ads",
         description: "Ad services, tagged as PPC and linked to LuminAds: what each costs this month so far, its management fee (a minimum or a share of spend, whichever is greater) and where the month is heading, kept current every night. Invoicing through QuickBooks when you switch it on."
       Runwell::Plugins.permission :ads, :manage_ads, name: "Tag ad services and see what they cost", roles: %w[owner manager]
       Runwell::Plugins.slot :work_panel, :ads, "ads/slots/work_panel"

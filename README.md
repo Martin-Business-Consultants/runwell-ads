@@ -36,9 +36,13 @@ entered in the browser only.
 
 ## Develop
 
+Needs Runwell 6.0 or later: its pages are drawn with runeui (Runwell's UI kit) and its stylesheet
+reads runeui's tokens.
+
+
 From a Runwell checkout beside it: `bin/rails "plugins:link[../runwell-ads]"`, `bin/rails db:migrate`,
 `bin/dev`, then switch it on in Settings › Plugins.
 
 ## Release
 
-Bump `lib/ads/version.rb`, commit, then `git tag v0.3.0 && git push --tags`.
+Bump `lib/ads/version.rb`, commit, then `git tag v0.4.0 && git push --tags`.

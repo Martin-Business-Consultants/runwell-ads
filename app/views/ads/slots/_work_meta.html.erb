@@ -2,5 +2,5 @@
 <%# A PPC badge on the line under a tagged piece of work's title (the :work_meta slot); paused, it says so. %>
 <% plan = work.ads_plan %>
 <% if plan %>
-  <%= badge(plan.kind, plan.active ? plan.kind_name : "#{plan.kind_name}, paused", tone: plan.active ? :accent : :neutral, title: "An ad service: its cost is on the Ads tab") %>
+  <%= ui :badge, content: plan.active ? plan.kind_name : "#{plan.kind_name}, paused", variant: plan.active ? :secondary : :outline, title: "An ad service: its cost is on the Ads tab" %>
 <% end %>

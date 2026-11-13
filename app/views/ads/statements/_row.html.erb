@@ -3,57 +3,59 @@
     and why, where a running month is heading, its state, and what can be done next. %>
 <tr id="<%= dom_id(statement, :row) %>" data-filter-target="item">
   <% if show_work %>
-    <td>
+    <td data-grow>
       <%= link_to statement.work.title, main_app.work_path(statement.work, tab: "plugin-ads") %>
-      <span class="muted small"><%= statement.client.name %></span>
+      <span class="ads-quiet"><%= statement.client.name %></span>
     </td>
   <% else %>
-    <td><%= statement.period_on.strftime("%b %Y") %></td>
+    <td class="ads-month"><%= statement.period_on.strftime("%b %Y") %></td>
   <% end %>
-  <td class="ads-num">
+  <td data-align="end" class="ads-num">
     <%= money(statement.spend_cents) %>
     <% if statement.partial? %>
-      <span class="muted small">to <%= statement.through_on.strftime("%b %-d") %></span>
+      <span class="ads-quiet">to <%= statement.through_on.strftime("%b %-d") %></span>
     <% end %>
   </td>
-  <td class="ads-num"><strong><%= money(statement.fee_cents) %></strong></td>
+  <td data-align="end" class="ads-num"><strong><%= money(statement.fee_cents) %></strong></td>
   <% if projecting %>
-    <td class="ads-num">
+    <td data-align="end" class="ads-num">
       <% if statement.partial? %>
         <span title="Spend <%= money(statement.projected_spend_cents) %> at the pace of <%= statement.days_counted %> of <%= statement.days_in_month %> days"><%= money(statement.projected_fee_cents) %></span>
       <% else %>
-        <span class="muted"><%= money(statement.fee_cents) %></span>
+        <span class="ads-quiet"><%= money(statement.fee_cents) %></span>
       <% end %>
     </td>
   <% end %>
   <td><span title="<%= statement.explanation %>"><%= statement.basis_name %></span></td>
-  <td>
-    <%= ads_state_tag(statement) %>
-    <% if statement.invoiced? %>
-      <span class="small"><%= ads_invoice_link(statement) %></span>
-    <% end %>
-    <% if statement.skip_reason.present? %>
-      <span class="muted small"><%= statement.skip_reason %></span>
-    <% end %>
-    <% if statement.last_error.present? %>
-      <span class="ads-error small"><%= statement.last_error %></span>
-    <% end %>
+  <td class="ads-state-cell">
+    <div class="ads-state">
+      <%= ads_state_tag(statement) %>
+      <% if statement.invoiced? %>
+        <span class="ads-small"><%= ads_invoice_link(statement) %></span>
+      <% end %>
+      <% if statement.skip_reason.present? %>
+        <span class="ads-quiet"><%= statement.skip_reason %></span>
+      <% end %>
+      <% if statement.last_error.present? %>
+        <span class="ads-error"><%= statement.last_error %></span>
+      <% end %>
+    </div>
   </td>
   <td>
-    <div class="button-row ads-actions">
+    <div class="ads-actions">
       <% if statement.invoiceable? %>
-        <%= button_to "Draft invoice", ads_statement_invoice_path(statement), class: "btn btn--secondary btn--sm" %>
+        <%= button_to "Draft invoice", ads_statement_invoice_path(statement), class: "ui-button", data: { variant: "outline", size: "sm" } %>
       <% end %>
       <% if statement.refreshable? %>
-        <%= button_to ads_refresh_path, params: { work_id: statement.work_id, period: statement.period_on.iso8601 }, class: "icon-button", title: "Read it again from LuminAds" do %>
-          <%= icon_tag "refresh" %><span class="visually-hidden">Read <%= statement.period_name %> again</span>
+        <%= button_to ads_refresh_path, params: { work_id: statement.work_id, period: statement.period_on.iso8601 }, class: "ui-button", data: { variant: "ghost", size: "icon-sm" }, title: "Read it again from LuminAds" do %>
+          <%= icon_tag "refresh" %><span class="ui-sr-only">Read <%= statement.period_name %> again</span>
         <% end %>
       <% end %>
       <% if statement.skippable? %>
-        <%= button_to "Skip", ads_statement_skip_path(statement), class: "btn btn--ghost btn--sm", title: "Don’t bill this month" %>
+        <%= button_to "Skip", ads_statement_skip_path(statement), class: "ui-button", data: { variant: "ghost", size: "sm" }, title: "Don’t bill this month" %>
       <% end %>
       <% if statement.restorable? %>
-        <%= button_to "Restore", ads_statement_skip_path(statement), method: :delete, class: "btn btn--ghost btn--sm" %>
+        <%= button_to "Restore", ads_statement_skip_path(statement), method: :delete, class: "ui-button", data: { variant: "ghost", size: "sm" } %>
       <% end %>
     </div>
   </td>

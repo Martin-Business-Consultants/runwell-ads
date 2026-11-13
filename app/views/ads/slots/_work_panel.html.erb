@@ -4,5 +4,5 @@
 <% if can?(:manage_ads) %>
   <%= render "ads/plans/plan", work: work %>
 <% else %>
-  <p class="muted">What ad services cost is for people who manage ads.</p>
+  <%= ui :empty, size: :sm, description: "What ad services cost is for people who manage ads." %>
 <% end %>
